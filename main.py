@@ -1,36 +1,32 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-import pyttsx3
+from pydantic import BaseModel
 import base64
-from io import BytesIO
 
 app = FastAPI()
 
+# ✅ CORS (필요 시 allow_origins에 실제 도메인을 넣어 제한하세요)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-class TTSRequest(BaseModel):
-    text: str
+class ImgReq(BaseModel):
+    image_base64: str
 
-@app.post("/generate-voice")
-def generate_voice(request: TTSRequest):
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+@app.post("/remove_bg")
+def remove_bg(req: ImgReq):
+    # TODO: 여기에 실제 배경 제거 엔진 연결
+    # 일단은 받은 이미지를 그대로 돌려보냅니다.
     try:
-        engine = pyttsx3.init()
-        engine.setProperty("rate", 150)
-
-        buf = BytesIO()
-        engine.save_to_file(request.text, 'output.mp3')
-        engine.runAndWait()
-
-        with open('output.mp3', 'rb') as f:
-            audio_data = f.read()
-        encoded_audio = base64.b64encode(audio_data).decode("utf-8")
-        return {"audio": encoded_audio}
-    except Exception as e:
-        return {"error": str(e)}
+        input_bytes = base64.b64decode(req.image_base64)
+    except Exception:
+        return {"image_base64": req.image_base64}
+    return {"image_base64": base64.b64encode(input_bytes).decode("utf-8")}
