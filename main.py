@@ -9,7 +9,6 @@ from rembg import remove
 
 app = FastAPI(title="A0 Remove Image API")
 
-# ✅ CORS (필요 시 allow_origins에 실제 도메인만 넣어 제한하세요)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,12 +18,10 @@ app.add_middleware(
 )
 
 class ImgReq(BaseModel):
-    image_base64: str  # 입력 이미지를 base64로 전달
+    image_base64: str
 
 def _remove_bg_from_bytes(img_bytes: bytes) -> bytes:
-    # rembg로 배경 제거 → 투명 PNG로 반환
-    out = remove(img_bytes)  # RGBA 포맷 bytes
-    # 안전하게 PNG로 강제 인코딩
+    out = remove(img_bytes)
     img = Image.open(BytesIO(out)).convert("RGBA")
     buf = BytesIO()
     img.save(buf, format="PNG")

@@ -1,26 +1,11 @@
-# A0 Remove Image - FastAPI (rembg enabled)
+# A0 Remove Image - FastAPI (rembg with Render fix)
 
-## Endpoints
-- `GET /` → service info
-- `GET /health` → `{"ok": true}`
-- `POST /remove_bg` → JSON: `{"image_base64": "<b64>"}` → returns `{"image_base64": "<b64-png>"}`
-- `POST /remove_bg_multipart` → multipart file field `file` → returns base64 PNG
+## What's changed
+- Pin Python version for Render: **runtime.txt → python-3.11.9**
+- Use a newer `rembg` compatible with current wheels: **rembg==2.0.66**
+- Keep `onnxruntime==1.17.3` (CPU) and Pillow 10.4
 
-## Local Run
-```bash
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-## Render Deploy
+## Deploy on Render
 - Build Command: `pip install -r requirements.txt`
 - Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-- Python: 3.11 recommended
-- Notes:
-  - First request on free plan can be slow due to cold start.
-  - Consider upgrading to avoid spin-downs.
-```
-
-**Performance tips**
-- If model download latency occurs on first call, let Render finish first warmup via `/health` or an initial `/remove_bg` call.
-- You can pin `onnxruntime` cpu-only build as above to avoid GPU deps.
+- Make sure `runtime.txt` is at repo root so Render uses Python 3.11.9.
