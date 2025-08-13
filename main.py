@@ -1,11 +1,10 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
-import base64
 from io import BytesIO
 from PIL import Image
 from rembg import remove
+import base64
 
 app = FastAPI(title="A0 Remove Image API")
 
