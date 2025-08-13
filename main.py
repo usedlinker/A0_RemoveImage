@@ -1,15 +1,15 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
+import base64
 from io import BytesIO
 from PIL import Image
 from rembg import remove
-import base64
 
-app = FastAPI(title="A0 Remove Image Server", version="1.0.0")
+app = FastAPI(title="A0 Remove Image API")
 
-# CORS (필요 시 allow_origins를 실제 도메인으로 제한하세요)
+# ✅ CORS (필요 시 allow_origins에 실제 도메인만 넣어 제한하세요)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,15 +21,13 @@ app.add_middleware(
 class ImgReq(BaseModel):
     image_base64: str  # 입력 이미지를 base64로 전달
 
-def _png_bytes_with_alpha(input_bytes: bytes) -> bytes:
-    """입력 이미지를 로드하고 배경 제거 후 투명 PNG 바이트로 반환"""
-    # 원본 로드
-    img = Image.open(BytesIO(input_bytes)).convert("RGBA")
-    # 배경 제거
-    out = remove(img)  # PIL.Image 전달 가능
-    # PNG로 저장
+def _remove_bg_from_bytes(img_bytes: bytes) -> bytes:
+    # rembg로 배경 제거 → 투명 PNG로 반환
+    out = remove(img_bytes)  # RGBA 포맷 bytes
+    # 안전하게 PNG로 강제 인코딩
+    img = Image.open(BytesIO(out)).convert("RGBA")
     buf = BytesIO()
-    out.save(buf, format="PNG")
+    img.save(buf, format="PNG")
     return buf.getvalue()
 
 @app.get("/")
@@ -37,9 +35,8 @@ def index():
     return {
         "service": "A0 Remove Image",
         "health": "/health",
-        "remove_json": "/remove_bg (POST, {image_base64})",
-        "remove_multipart": "/remove_bg_multipart (POST, file=@image)",
-        "version": "1.0.0"
+        "remove_json": "/remove_bg",
+        "remove_multipart": "/remove_bg_multipart"
     }
 
 @app.get("/health")
@@ -48,20 +45,21 @@ def health():
 
 @app.post("/remove_bg")
 def remove_bg(req: ImgReq):
-    # JSON base64 입력 → 투명 PNG base64 출력
     try:
-        input_bytes = base64.b64decode(req.image_base64)
-        png_bytes = _png_bytes_with_alpha(input_bytes)
-        return {"image_base64": base64.b64encode(png_bytes).decode("utf-8")}
+        raw = base64.b64decode(req.image_base64)
     except Exception as e:
-        return {"error": f"processing_failed: {e}"}
+        raise HTTPException(status_code=400, detail=f"Invalid base64: {e}")
+    try:
+        result = _remove_bg_from_bytes(raw)
+        return {"image_base64": base64.b64encode(result).decode("utf-8")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Background removal failed: {e}")
 
 @app.post("/remove_bg_multipart")
 async def remove_bg_multipart(file: UploadFile = File(...)):
-    # multipart 업로드 → 투명 PNG base64 출력
     try:
-        input_bytes = await file.read()
-        png_bytes = _png_bytes_with_alpha(input_bytes)
-        return {"image_base64": base64.b64encode(png_bytes).decode("utf-8")}
+        raw = await file.read()
+        result = _remove_bg_from_bytes(raw)
+        return {"image_base64": base64.b64encode(result).decode("utf-8")}
     except Exception as e:
-        return {"error": f"processing_failed: {e}"}
+        raise HTTPException(status_code=500, detail=f"Background removal failed: {e}")
