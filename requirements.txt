@@ -1,6 +1,0 @@
-fastapi==0.112.0
-uvicorn[standard]==0.30.5
-pydantic==2.8.2
-rembg==2.0.66
-onnxruntime==1.17.3
-Pillow==10.4.0
