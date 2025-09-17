@@ -1,9 +1,0 @@
-fastapi==0.100.3
-uvicorn==0.22.0
-pydantic==1.10.11
-openai==1.0.0
-gTTS==2.4.0
-langdetect==1.0.9
-requests==2.31.0
-python-multipart==0.0.6
-Pillow==10.1.0
