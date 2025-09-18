@@ -1,16 +1,17 @@
-import os, time
-from typing import List
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import PlainTextResponse, FileResponse
+import os, time, io
+from typing import List, Optional
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi.responses import PlainTextResponse, FileResponse, StreamingResponse
+from PIL import Image
 
-app = FastAPI(title="Step3 - Upload + File Management")
+app = FastAPI(title="Step4 - Upload + Manage + Process")
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.get("/", response_class=PlainTextResponse)
 def root():
-    return "Step3 Server Running - Upload + File Management"
+    return "Step4 Server Running - Upload + Manage + Process"
 
 @app.get("/health")
 def health():
@@ -50,3 +51,36 @@ def delete_file(name: str):
         raise HTTPException(status_code=404, detail="File not found")
     os.remove(path)
     return {"message": "Deleted", "filename": safe}
+
+# ------- 새로 추가: 이미지 처리 --------
+@app.get("/process/{name}")
+def process_image(
+    name: str,
+    op: str = Query(..., description="grayscale 또는 resize"),
+    w: Optional[int] = Query(None, description="resize일 때 너비"),
+    h: Optional[int] = Query(None, description="resize일 때 높이"),
+):
+    safe = os.path.basename(name)
+    src_path = os.path.join(UPLOAD_DIR, safe)
+    if not os.path.isfile(src_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        with Image.open(src_path) as img:
+            if op == "grayscale":
+                out_img = img.convert("L")
+            elif op == "resize":
+                if not (w and h):
+                    raise HTTPException(status_code=400, detail="resize에는 w,h 둘 다 필요")
+                out_img = img.resize((w, h))
+            else:
+                raise HTTPException(status_code=400, detail="op는 grayscale 또는 resize")
+
+            buf = io.BytesIO()
+            out_img.save(buf, format="PNG")
+            buf.seek(0)
+            return StreamingResponse(buf, media_type="image/png")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Processing failed: {e}")
+
